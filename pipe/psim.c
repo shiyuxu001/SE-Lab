@@ -542,9 +542,11 @@ void do_fetch_stage()
     
         // need to update: forwarding, stalling, decode inputs, AND STATUS
 
+        byte_t temp_byte;
         byte_t instr = HPACK(imem_icode, imem_ifun);
 
-        fetch_input->status = STAT_AOK;
+        fetch_input->status = writeback_input->status;
+        decode_input->status = STAT_AOK;
         // update depending on tests
         decode_input->icode = GET_ICODE(instr);
         decode_input->ifun = GET_FUN(instr);
@@ -566,7 +568,7 @@ void do_fetch_stage()
                 fetch_input->status = STAT_HLT;
                 imem_error |= !get_byte_val(mem, f_pc, &instr);
                 if (imem_error == 0) {
-                    fetch_input->status = STAT_ADR;
+                    decode_input->status = STAT_ADR;
                 }
 				break;
 
