@@ -535,9 +535,155 @@ static byte_t sim_step_pipe(word_t ccount)
  * imem_error is defined for logging purpose, you can use it to help
  * with your design, but it's also fine to neglect it
  *******************************************************************/
+// this stage selects a current value for the PC and predicts the next PC value (valP)
 void do_fetch_stage()
 {
     /* your implementation */
+    
+        // need to update: forwarding, stalling, decode inputs, AND STATUS
+
+        byte_t temp_byte;
+        byte_t instr = HPACK(imem_icode, imem_ifun);
+
+        fetch_input->status = writeback_input->status;
+        decode_input->status = STAT_AOK;
+        // update depending on tests
+        decode_input->icode = GET_ICODE(instr);
+        decode_input->ifun = GET_FUN(instr);
+		switch (instr) {
+			case HPACK(I_NOP, F_NONE):
+                f_pc += 1;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+                imem_error |= !get_byte_val(mem, f_pc, &instr);
+                if (imem_error == 0) {
+                    fetch_input->status = STAT_ADR;
+                }
+                
+                break;
+			case HPACK(I_HALT, F_NONE):
+				f_pc += 1;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+                fetch_input->status = STAT_HLT;
+                imem_error |= !get_byte_val(mem, f_pc, &instr);
+                if (imem_error == 0) {
+                    decode_input->status = STAT_ADR;
+                }
+				break;
+
+			case HPACK(I_RRMOVQ, F_NONE):
+			case HPACK(I_RRMOVQ, C_LE):
+			case HPACK(I_RRMOVQ, C_L):
+			case HPACK(I_RRMOVQ, C_E):
+			case HPACK(I_RRMOVQ, C_NE):
+			case HPACK(I_RRMOVQ, C_GE):
+			case HPACK(I_RRMOVQ, C_G):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				f_pc += 2;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			case HPACK(I_IRMOVQ, F_NONE):
+                f_pc += 10;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// rb = LO4(tempB);
+				// imem_error |= !get_word_val(mem, pc + 2, &valc);
+				break;
+
+			case HPACK(I_RMMOVQ, F_NONE):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				// imem_error |= !get_word_val(mem, pc + 2, &valc);
+				f_pc += 10;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			case HPACK(I_MRMOVQ, F_NONE):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				// imem_error |= !get_word_val(mem, pc + 2, &valc);
+				f_pc += 10;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			case HPACK(I_ALU, A_ADD):
+			case HPACK(I_ALU, A_SUB):
+			case HPACK(I_ALU, A_AND):
+			case HPACK(I_ALU, A_XOR):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				f_pc += 2;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			case HPACK(I_JMP, C_YES):
+			case HPACK(I_JMP, C_LE):
+			case HPACK(I_JMP, C_L):
+			case HPACK(I_JMP, C_E):
+			case HPACK(I_JMP, C_NE):
+			case HPACK(I_JMP, C_GE):
+			case HPACK(I_JMP, C_G):
+				// imem_error |= !get_word_val(mem, pc + 1, &valc);
+
+                f_pc += 9;
+                decode_input->valp = f_pc;
+				// decode_input->valc = ;
+                fetch_input->predPC = decode_input->valc;
+				break;
+
+			case HPACK(I_CALL, F_NONE):
+				// imem_error |= !get_word_val(mem, pc + 1, &valc);
+				f_pc += 9;
+                decode_input->valp = f_pc;
+				// decode_input->valc = ;
+                fetch_input->predPC = decode_input->valc;
+				break;
+
+			case HPACK(I_RET, F_NONE):
+				f_pc += 1;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+                imem_error |= !get_byte_val(mem, f_pc, &instr);
+                if (imem_error == 0) {
+                    fetch_input->status = STAT_ADR;
+                }
+				break;
+
+			case HPACK(I_PUSHQ, F_NONE):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				f_pc += 1;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			case HPACK(I_POPQ, F_NONE):
+				// imem_error |= !get_byte_val(mem, pc + 1, &tempB);
+				// ra = HI4(tempB);
+				// rb = LO4(tempB);
+				f_pc += 2;
+                decode_input->valp = f_pc;
+                fetch_input->predPC = f_pc;
+				break;
+
+			default:
+                fetch_input->status = STAT_INS;
+				break;
+		}
+
 
 
 
