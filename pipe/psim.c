@@ -538,6 +538,9 @@ static byte_t sim_step_pipe(word_t ccount)
 void do_fetch_stage()
 {
     /* your implementation */
+    
+    
+    
 
     /* logging function, do not change this */
     if (!imem_error) {
