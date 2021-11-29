@@ -566,6 +566,7 @@ void do_fetch_stage()
                 if (imem_error == 0) {
                     fetch_input->status = STAT_ADR;
                 }
+                
                 break;
 			case HPACK(I_HALT, F_NONE):
 				f_pc += 1;
@@ -752,7 +753,7 @@ void do_decode_stage()
 
         case I_NOP: break;
 
-        case I_RRMOVQ: // aka CMOVQ
+        case I_RRMOVQ:
             execute_input->srca = decode_input->ra;
             execute_input->deste = decode_input->rb;
             break;
@@ -833,56 +834,58 @@ void do_execute_stage()
     memory_input->icode = execute_input->icode;
     memory_input->vala = execute_input->vala;
     memory_input->destm = execute_input->destm;
-
+    // dest e changes on condiiton
     memory_input->vale = 0x0;
+
     cc_in = cc;
-		bool cnd = false;
+	bool cnd = false;
 
-		switch (execute_input->icode) {
-			case I_HALT: break;
+    switch (execute_input->icode) {
+        case I_HALT:
+        break;
 
-			case I_NOP: break;
+        case I_NOP: break;
 
-			case I_RRMOVQ: // aka CMOVQ
-				cnd = cond_holds(cc, execute_input->ifun);
-				memory_input->vale = execute_input->vala;
-				if (!cnd) {
-					memory_input->deste = REG_NONE;
-				}
-				break;
+        case I_RRMOVQ: // aka CMOVQ
+            cnd = cond_holds(cc, execute_input->ifun);
+            memory_input->vale = execute_input->vala;
+            if (!cnd) {
+                memory_input->deste = REG_NONE;
+            }
+            break;
 
-			case I_IRMOVQ:
-				memory_input->vale = execute_input->valc;
-				break;
+        case I_IRMOVQ:
+            memory_input->vale = execute_input->valc;
+            break;
 
-			case I_RMMOVQ:
-            case I_MRMOVQ:
-				memory_input->vale = execute_input->valb + execute_input->valc;
-				break;
+        case I_RMMOVQ:
+        case I_MRMOVQ:
+            memory_input->vale = execute_input->valb + execute_input->valc;
+            break;
 
-			case I_ALU:
-				memory_input->vale = compute_alu(execute_input->ifun, execute_input->vala, execute_input->valb);
-				cc_in = compute_cc(execute_input->ifun, execute_input->vala, execute_input->valb);
-				break;
+        case I_ALU:
+            memory_input->vale = compute_alu(execute_input->ifun, execute_input->vala, execute_input->valb);
+            cc_in = compute_cc(execute_input->ifun, execute_input->vala, execute_input->valb);
+            break;
 
-			case I_JMP:
-				cnd = cond_holds(cc, execute_input->ifun);
-				break;
+        case I_JMP:
+            cnd = cond_holds(cc, execute_input->ifun);
+            break;
 
-			case I_CALL:
-            case I_PUSHQ:
-				memory_input->vale = execute_input->valb - 8;
-				break;
+        case I_CALL:
+        case I_PUSHQ:
+            memory_input->vale = execute_input->valb - 8;
+            break;
 
-			case I_RET:
-            case I_POPQ:
-				memory_input->vale = execute_input->valb + 8;
-				break;
+        case I_RET:
+        case I_POPQ:
+            memory_input->vale = execute_input->valb + 8;
+            break;
 
-			default:
-				printf("icode is not valid (%d)", execute_input->icode);
-				break;
-		}
+        default:
+            printf("icode is not valid (%d)", execute_input->icode);
+            break;
+    }
     /* logging functions, do not change these */
     if (execute_output->icode == I_JMP) {
         sim_log("\tExecute: instr = %s, cc = %s, branch %staken\n",
@@ -908,8 +911,8 @@ void do_memory_stage()
     //writeback_input:  valm, deste, destm, status
 
     /* your implementation */
-    mem_addr   = 0;
-    mem_data   = 0;
+    mem_addr   = 0x0;
+    mem_data   = 0x0;
     mem_write  = false;
     mem_read   = false;
     dmem_error = false;
@@ -921,59 +924,61 @@ void do_memory_stage()
     writeback_input->icode = memory_input->icode;
     writeback_input->ifun = memory_input->ifun;
     writeback_input->vale = memory_input->vale;
+    writeback_input->status = memory_input->status;
+    writeback_input->deste = memory_input->deste;
+    writeback_input->destm = memory_input->destm;
 
-		switch (memory_input->icode) {
-			case I_HALT:
-				status = STAT_HLT;
-				break;
+    switch (memory_input->icode) {
+        case I_HALT:
+            break;
 
-			case I_NOP: break;
-			case I_RRMOVQ: break; // aka CMOVQ
-			case I_IRMOVQ: break;
-			case I_RMMOVQ:
-				mem_write = true;
-				mem_addr = memory_input->deste;
-				mem_data = memory_input->vala;
-				break; //umm
+        case I_NOP: break;
+        case I_RRMOVQ: break; // aka CMOVQ
+        case I_IRMOVQ: break;
+        case I_RMMOVQ:
+            mem_write = true;
+            mem_addr = memory_input->deste;
+            mem_data = memory_input->vala;
+            break; //umm
 
-			case I_MRMOVQ:
-				dmem_error |= !get_word_val(mem, memory_input->vale, writeback_input->destm);
-                writeback_input->valm = memory_input->vale; //umm
-                //set writeback valm/??
-                //get_word_val(mem, memory_input->vale, writeback_input->destm); //umm
-            
-				break;
+        case I_MRMOVQ:
+            dmem_error |= !get_word_val(mem, memory_input->vale, writeback_input->destm);
+            writeback_input->valm = memory_input->vale; //umm
+            //set writeback valm/??
+            //get_word_val(mem, memory_input->vale, writeback_input->destm); //umm
+        
+            break;
 
-			case I_ALU: break;
-			case I_JMP: break;
+        case I_ALU: break;
+        case I_JMP: break;
 
-			case I_CALL:
-				mem_write = true;
-				mem_addr = execute_output->deste;
-				mem_data = f_pc; //umm
-				break;
+        case I_CALL:
+            mem_write = true;
+            mem_addr = memory_input->deste;
+            mem_data = f_pc; //umm
+            break;
 
-			case I_RET:
-				dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
-                writeback_input->valm = memory_input->vala; //umm
-				break;
+        case I_RET:
+            dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
+            writeback_input->valm = memory_input->vala; //umm
+            break;
 
-			case I_PUSHQ:
-				mem_write = true;
-				mem_addr = writeback_input->deste;
-				mem_data = memory_input->vala;
-				break;
+        case I_PUSHQ:
+            mem_write = true;
+            mem_addr = writeback_input->deste;
+            mem_data = memory_input->vala;
+            break;
 
-			case I_POPQ:
-				dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
-                writeback_input->valm = memory_input->vala; //umm
-				break;
+        case I_POPQ:
+            dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
+            writeback_input->valm = memory_input->vala; //umm
+            break;
 
-			default:
-				printf("icode is not valid (%d)", imem_icode);
-                instr_val = 0;
-				break;
-		}
+        default:
+            printf("icode is not valid (%d)", imem_icode);
+            instr_val = 0;
+            break;
+    }
 
 		if (mem_write && instr_val) {  //is imem_icode and ifun updated to be current instruction?
 			dmem_error |= !set_word_val(mem, mem_addr, mem_data);
