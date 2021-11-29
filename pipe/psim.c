@@ -637,9 +637,12 @@ void do_fetch_stage()
 			case HPACK(I_ALU, A_SUB):
 			case HPACK(I_ALU, A_AND):
 			case HPACK(I_ALU, A_XOR):
-				// imem_error |= !get_byte_val(mem, f_pc + 1, &tempB);
 				decode_input->ra = HI4(temp_byte);
 				decode_input->rb = LO4(temp_byte);
+                imem_error |= !get_byte_val(mem, f_pc + 1, &temp_byte);
+                if (imem_error == 0) {
+                    fetch_input->status = STAT_ADR;
+                }
 				f_pc += 2;
                 decode_input->valp = f_pc;
                 fetch_input->predPC = f_pc;
@@ -712,6 +715,7 @@ void do_fetch_stage()
 				break;
 		}
         decode_input->status = fetch_input->status;
+        decode_input->stage_pc = f_pc;
     
     /* logging function, do not change this */
     if (!imem_error) {
@@ -822,8 +826,67 @@ void do_execute_stage()
     word_t alua, alub;
     alua = alub = 0;
 
-    /* your implementation */
+    memory_input->status = execute_input->status;
+    memory_input->stage_pc = execute_input->stage_pc;
+    memory_input->icode = execute_input->icode;
+    memory_input->vala = execute_input->vala;
+    memory_input->destm = execute_input->destm;
 
+    memory_input->vale = 0x0;
+    cc_in = cc;
+		bool cnd = false;
+
+		switch (execute_input->icode) {
+			case I_HALT: break;
+
+			case I_NOP: break;
+
+			case I_RRMOVQ: // aka CMOVQ
+				cnd = cond_holds(cc, execute_input->ifun);
+				memory_input->vale = execute_input->vala;
+				if (!cnd) {
+					memory_input->deste = REG_NONE;
+				}
+				break;
+
+			case I_IRMOVQ:
+				memory_input->vale = execute_input->valc;
+				break;
+
+			case I_RMMOVQ:
+            case I_MRMOVQ:
+				memory_input->vale = execute_input->valb + execute_input->valc;
+				break;
+
+			case I_ALU:
+				memory_input->vale = compute_alu(execute_input->ifun, execute_input->vala, execute_input->valb);
+				cc_in = compute_cc(execute_input->ifun, execute_input->vala, execute_input->valb);
+				break;
+
+			case I_JMP:
+				cnd = cond_holds(cc, execute_input->ifun);
+				break;
+
+			case I_CALL:
+				memory_input->vale = execute_input->valb - 8;
+				break;
+
+			case I_RET:
+				memory_input->vale = execute_input->valb + 8;
+				break;
+
+			case I_PUSHQ:
+				memory_input->vale = execute_input->valb - 8;
+				break;
+
+			case I_POPQ:
+				memory_input->vale = execute_input->valb + 8;
+				break;
+
+			default:
+				printf("icode is not valid (%d)", execute_input->icode);
+				break;
+		}
     /* logging functions, do not change these */
     if (execute_output->icode == I_JMP) {
         sim_log("\tExecute: instr = %s, cc = %s, branch %staken\n",
