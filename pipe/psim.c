@@ -868,18 +868,12 @@ void do_execute_stage()
 				break;
 
 			case I_CALL:
+            case I_PUSHQ:
 				memory_input->vale = execute_input->valb - 8;
 				break;
 
 			case I_RET:
-				memory_input->vale = execute_input->valb + 8;
-				break;
-
-			case I_PUSHQ:
-				memory_input->vale = execute_input->valb - 8;
-				break;
-
-			case I_POPQ:
+            case I_POPQ:
 				memory_input->vale = execute_input->valb + 8;
 				break;
 
