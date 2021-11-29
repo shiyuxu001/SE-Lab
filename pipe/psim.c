@@ -540,11 +540,26 @@ void do_fetch_stage()
 {
     /* your implementation */
     
+<<<<<<< HEAD
         byte_t temp_byte = 0x0;
         // byte = HPACK(REG_NONE, REG_NONE);
         set_byte_val(mem, f_pc, temp_byte);
         byte_t instr = HPACK(imem_icode, imem_ifun);
         byte_t instr = HPACK(I_NOP, F_NONE);
+=======
+// <<<<<<< master
+//         byte_t temp_byte;
+//         if (get_byte_val(mem, f_pc,  mem->contents[f_pc])) {
+//             byte_t temp_byte = mem->contents[f_pc];
+//         }
+//         byte_t instr = HPACK(imem_icode, imem_ifun);
+// =======
+//         // need to update: forwarding, stalling, decode inputs, AND STATUS
+
+    
+//         byte_t instr = mem->contents[f_pc];    //??
+// >>>>>>> master
+>>>>>>> 09bf1612dc25db2343c509ec5ba19b379cfaf776
 
         if (starting_up == 0) {
             fetch_input->status = STAT_AOK;
@@ -718,8 +733,15 @@ void do_fetch_stage()
                 fetch_input->status = STAT_INS;
 				break;
 		}
-        decode_input->status = fetch_input->status;
-        decode_input->stage_pc = f_pc;
+// <<<<<<< master
+//         decode_input->status = fetch_input->status;
+//         decode_input->stage_pc = f_pc;
+// =======
+
+
+
+
+// >>>>>>> master
     
     /* logging function, do not change this */
     if (!imem_error) {
@@ -907,14 +929,83 @@ void do_execute_stage()
  *******************************************************************/
 void do_memory_stage()
 {
-    /* dummy placeholders, replace them with your implementation */
+    //writeback_input:  valm, deste, destm, status
+
+    /* your implementation */
     mem_addr   = 0;
     mem_data   = 0;
     mem_write  = false;
     mem_read   = false;
     dmem_error = false;
 
-    /* your implementation */
+    //umm what to put for actual implementation??
+
+    bool instr_val = 1;
+    
+    writeback_input->icode = memory_input->icode;
+    writeback_input->ifun = memory_input->ifun;
+    writeback_input->vale = memory_input->vale;
+
+		switch (memory_input->icode) {
+			case I_HALT:
+				status = STAT_HLT;
+				break;
+
+			case I_NOP: break;
+			case I_RRMOVQ: break; // aka CMOVQ
+			case I_IRMOVQ: break;
+			case I_RMMOVQ:
+				mem_write = true;
+				mem_addr = memory_input->deste;
+				mem_data = memory_input->vala;
+				break; //umm
+
+			case I_MRMOVQ:
+				dmem_error |= !get_word_val(mem, memory_input->vale, writeback_input->destm);
+                writeback_input->valm = memory_input->vale; //umm
+                //set writeback valm/??
+                //get_word_val(mem, memory_input->vale, writeback_input->destm); //umm
+            
+				break;
+
+			case I_ALU: break;
+			case I_JMP: break;
+
+			case I_CALL:
+				mem_write = true;
+				mem_addr = execute_output->deste;
+				mem_data = f_pc; //umm
+				break;
+
+			case I_RET:
+				dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
+                writeback_input->valm = memory_input->vala; //umm
+				break;
+
+			case I_PUSHQ:
+				mem_write = true;
+				mem_addr = writeback_input->deste;
+				mem_data = memory_input->vala;
+				break;
+
+			case I_POPQ:
+				dmem_error |= !get_word_val(mem, memory_input->vala, writeback_input->destm);
+                writeback_input->valm = memory_input->vala; //umm
+				break;
+
+			default:
+				printf("icode is not valid (%d)", imem_icode);
+                instr_val = 0;
+				break;
+		}
+
+		if (mem_write && instr_val) {  //is imem_icode and ifun updated to be current instruction?
+			dmem_error |= !set_word_val(mem, mem_addr, mem_data);
+	        sim_log("Wrote 0x%llx to address 0x%llx\n", mem_data, mem_addr);
+        }
+
+    //end implementation
+
 
     if (mem_read) {
         if ((dmem_error |= !get_word_val(mem, mem_addr, &mem_data))) {
@@ -945,7 +1036,27 @@ void do_writeback_stage()
     wb_destM = REG_NONE;
     wb_valM  = 0;
 
+
+    //destE is the destination register
+    //valE is the value to set it to
+    //location is register file, so reg
+
     /* your implementation */
+    switch(writeback_input->icode){
+        case I_MRMOVQ:
+            // set_reg_val
+            // wb_destE 
+            break;
+        case I_PUSHQ:
+            break;
+        case I_POPQ:
+            break;
+        case I_CALL:
+            break;
+        defult:
+
+            
+    }
 
     status = writeback_output->status;
     if (wb_destE != REG_NONE &&  writeback_output -> status == STAT_AOK) {
