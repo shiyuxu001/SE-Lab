@@ -540,14 +540,18 @@ void do_fetch_stage()
 {
     /* your implementation */
     
-        byte_t temp_byte;
-        if (get_byte_val(mem, f_pc,  mem->contents[f_pc])) {
-            byte_t temp_byte = mem->contents[f_pc];
-        }
+        byte_t temp_byte = 0x0;
+        // byte = HPACK(REG_NONE, REG_NONE);
+        set_byte_val(mem, f_pc, temp_byte);
         byte_t instr = HPACK(imem_icode, imem_ifun);
+        byte_t instr = HPACK(I_NOP, F_NONE);
 
-        fetch_input->status = writeback_input->status;
-        fetch_input->status = STAT_AOK;
+        if (starting_up == 0) {
+            fetch_input->status = STAT_AOK;
+        } else {
+            fetch_input->status = writeback_input->status;
+        }
+        
         // update depending on tests
         decode_input->icode = GET_ICODE(instr);
         decode_input->ifun = GET_FUN(instr);
@@ -609,7 +613,7 @@ void do_fetch_stage()
 
 			case HPACK(I_RMMOVQ, F_NONE):
 				decode_input->ra = HI4(temp_byte);
-				decode_input->rb = LO4(temp_byte);
+				decode_input->rb = LO4(temp_byte); 
                 decode_input->valc = get_reg_val(mem, f_pc + 2);
                 imem_error |= !get_word_val(mem, f_pc + 2, &decode_input->valc);
                 imem_error |= !get_byte_val(mem, f_pc + 1, &temp_byte);
