@@ -544,12 +544,7 @@ void do_fetch_stage()
         get_byte_val(mem, f_pc, &instr);
         decode_input->icode = HI4(instr);
         decode_input->ifun = LO4(instr);
-        
-        if (starting_up == 0) {
-            fetch_input->status = STAT_AOK;
-        } else {
-            fetch_input->status = writeback_input->status;
-        }
+        fetch_input->status = STAT_AOK;
         
         // update depending on tests
         decode_input->valc = 0x0;
